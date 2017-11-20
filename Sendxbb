@@ -1,0 +1,97 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+using System.IO.Ports;
+using System.Globalization;
+
+namespace WindowsFormsApplication3
+{
+    public partial class Form1 : Form
+    {
+        public Form1()
+        {
+            InitializeComponent();
+        }
+
+        int start_delimiter = 0x7E;
+        int[] Len = new int[] { 0x00, 0x10};
+        int Frame_type = 0x10;
+        int FrameID = 0x00;
+        string add644 = " 00 13 A2 00 40 A7 93 E2";
+        int[] add16 = new int[] { 0xFF, 0xFE };
+        int Broadcast = 0x00;
+        int Options = 0x00;
+        int[] RF_Data = new int[] { 0x4F, 0x4B };
+        int Checksum1;
+        byte[] add1;
+
+        public byte[] convert(string add)
+        {
+            string[] s = null;
+            byte[] Data= null;
+
+            s = add.Split(new string[] { " " }, StringSplitOptions.RemoveEmptyEntries);
+            Data = new Byte[s.Length];
+            for(int i=0;i< Data.Length;i++)
+            {
+              Byte.TryParse(s[i], NumberStyles.HexNumber, CultureInfo.CurrentCulture,out Data[i]);
+              
+            }
+            return Data;
+        }
+        private void button1_Click(object sender, EventArgs e)
+        {
+           add1 = convert(add644);
+           Checksum();
+        }
+        public void Checksum()
+        {
+            int sum;
+            int s_add64=0;
+            byte[] Data;
+            byte[] Packet;
+
+
+            for (int i = 0; i < add1.Length; i++)
+            {
+                s_add64 += add1[i];
+            }
+          
+            sum = 0xfff - (Frame_type + FrameID + s_add64  + add16[0] + add16[1] + Broadcast + Options + RF_Data[0] + RF_Data[1]);
+            Data = BitConverter.GetBytes(sum);
+            Checksum1 = Data[0];
+            Packet = new byte[] { CT(start_delimiter), CT(Len[0]), CT(Len[1]), CT(Frame_type), CT(FrameID), add1[0],add1[1],add1[2],add1[3],add1[4], add1[5], add1[6], add1[7],CT(add16[0]),CT(add16[1]), CT(Broadcast), CT(Options), CT(RF_Data[0]), CT(RF_Data[1]), CT(Checksum1) };
+            serialPort1.Write(Packet, 0, Packet.Length);
+        }
+        public byte CT(int n)
+        {
+            byte data;
+            data = Convert.ToByte(n);
+            return data;
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            try
+            {
+                serialPort1.PortName = "COM33";
+                serialPort1.BaudRate = 9600;
+                serialPort1.DataBits = 8;
+                serialPort1.Parity = Parity.None;
+                serialPort1.StopBits = StopBits.One;
+                serialPort1.Open();
+            }
+            catch (Exception ex)
+            {
+
+                Console.WriteLine(ex.Message);
+
+            }
+        }
+    }
+}
